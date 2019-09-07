@@ -51,10 +51,6 @@ def load_checkpoint(checkpoint_path):
     model.load_state_dict(checkpoint['state_dict'])
     model.class_to_idx = checkpoint['class_to_idx']
 
-    
-
-    
-
     return model
 
 def process_image(image):
@@ -79,8 +75,6 @@ def predict(image_path, model, topk=5):
     probability = F.softmax(output.data,dim=1)
 
     return probability.topk(topk)
-
-
 
 def main():
     args = arg_parse()
