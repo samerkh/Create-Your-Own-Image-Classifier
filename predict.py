@@ -41,13 +41,13 @@ def load_checkpoint(checkpoint_path):
     arch = checkpoint['arch']
     hidden_units = checkpoint['hidden_units']
     output_features = checkpoint['output_features']
-    
+
     model = load_model(arch)
     if hasattr('model', 'classifier'):
         model.classifier = initialize_classifier(model, hidden_units, output_features)
     else:
         model.fc = initialize_classifier(model, hidden_units, output_features)
-        
+
     model.load_state_dict(checkpoint['state_dict'])
     model.class_to_idx = checkpoint['class_to_idx']
 
@@ -64,7 +64,7 @@ def process_image(image):
     tensor_image = image_transforms(pil_image)
     return tensor_image
 
-def predict(image_path, model, topk=5):
+def predict(image_path, model, topk):
 
     input_img = process_image(image_path)
     input_img = input_img.unsqueeze_(0)
@@ -99,5 +99,5 @@ def main():
     for i in range(top_k):
         print("{} with a probability of {}".format(labels[i], probability[i]))
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     main()

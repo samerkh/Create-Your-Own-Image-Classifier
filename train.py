@@ -8,7 +8,7 @@ def arg_parse():
     parser = argparse.ArgumentParser(description='Image Classifier Training')
 
     parser.add_argument('data_dir')
-    parser.add_argument('--save_dir', help='Set directory to save checkpoints', default="./checkpoint.pth")
+    parser.add_argument('--save_dir', help='Set directory to save checkpoints', default="checkpoint.pth")
     parser.add_argument('--learning_rate', help='Set the learning rate', default=0.001)
     parser.add_argument('--hidden_units', help='Set the number of hidden units', type=int, default=150)
     parser.add_argument('--output_features', help='Specify the number of output features', type=int, default=102)
@@ -19,22 +19,22 @@ def arg_parse():
     return parser.parse_args()
 
 def train_transform(train_dir):
-    train_transforms = transforms.Compose([transforms.RandomRotation(30),
+    transform = transforms.Compose([transforms.RandomRotation(30),
                                            transforms.RandomResizedCrop(224),
                                            transforms.RandomHorizontalFlip(),
                                            transforms.ToTensor(),
                                            transforms.Normalize([0.485, 0.456, 0.406],
                                                                 [0.229, 0.224, 0.225])])
-    train_set = datasets.ImageFolder(train_dir, transform=train_transforms)
+    train_set = datasets.ImageFolder(train_dir, transform=transform)
     return train_set
 
 def valid_transform(valid_dir):
-    valid_transforms = transforms.Compose([transforms.Resize(255),
+    transform = transforms.Compose([transforms.Resize(255),
                                            transforms.CenterCrop(224),
                                            transforms.ToTensor(),
                                            transforms.Normalize([0.485, 0.456, 0.406],
                                                                 [0.229, 0.224, 0.225])])
-    valid_set = datasets.ImageFolder(valid_dir, transform=valid_transforms)
+    valid_set = datasets.ImageFolder(valid_dir, transform=transform)
     return valid_set
 
 def train_loader(data, batch_size=64, shuffle=True):
@@ -62,7 +62,7 @@ def initialize_classifier(model, hidden_units, output_features):
 
     classifier = nn.Sequential(nn.Linear(in_features, hidden_units),
                                nn.ReLU(),
-                               nn.Dropout(0.2),
+                               nn.Dropout(0.5),
                                nn.Linear(hidden_units, output_features),
                                nn.LogSoftmax(dim=1))
     return classifier
@@ -98,7 +98,7 @@ def train_model(model, trainloader, validloader, device, optimizer, criterion, e
                         test_loss += loss.item()
 
                         ps = torch.exp(output)
-                        top_p, top_class_idx = ps.topk(1, dim=1)
+                        _, top_class_idx = ps.topk(1, dim=1)
                         equals = top_class_idx == labels.view(*top_class_idx.shape)
                         correct += torch.mean(equals.type(torch.FloatTensor)).item()
 
@@ -115,32 +115,12 @@ def save_checkpoint(model, optimizer, class_to_idx, path, arch, hidden_units, ou
 
     model.class_to_idx = class_to_idx
     checkpoint = {'state_dict': model.state_dict(),
-                  'optimizer': optimizer.state_dict(),
                   'class_to_idx': model.class_to_idx,
                   'arch': arch,
                   'hidden_units': hidden_units,
                   'output_features': output_features
                   }
     torch.save(checkpoint, path)
-
-def load_checkpoint(checkpoint_path, optimizer):
-    checkpoint = torch.load(checkpoint_path)
-
-    arch = checkpoint['arch']
-    model = load_model(arch)
-    model.load_state_dict(checkpoint['state_dict'])
-    model.class_to_idx = checkpoint['class_to_idx']
-    optimizer.load_state_dict(checkpoint['optimizer'])
-
-    hidden_units = checkpoint['hidden_units']
-    output_features = checkpoint['output_features']
-
-    if hasattr('model', 'classifier'):
-        model.classifier = initialize_classifier(model, hidden_units, output_features)
-    else:
-        model.fc = initialize_classifier(model, hidden_units, output_features)
-
-    return model, optimizer
 
 def main():
     args = arg_parse()
@@ -163,7 +143,8 @@ def main():
     trainloader = train_loader(train_set)
     validloader = valid_loader(valid_set)
 
-    device = check_device()
+    if args.gpu:
+        device = check_device()
 
     model = load_model(arch)
 
